@@ -1,0 +1,12 @@
+#tag-color,
+#tag-color + input {
+	width: 60px;
+}
+
+.tag-color-sample {
+	border-radius: 3px;
+	border: 1px solid #dfdfdf;
+	display: inline-block;
+	height: 20px;
+	width: 20px;
+}

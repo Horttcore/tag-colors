@@ -3,7 +3,7 @@
 Plugin Name: Tag Colors
 Plugin URI: http://horttcore.de
 Description: Color your tags
-Version: 0.1
+Version: 0.2
 Author: Ralf Hortt
 Author URI: http://horttcore.de
 License: GPL2
@@ -97,12 +97,21 @@ class Tag_Colors
 	 **/
 	public function created_tag_color( $term_id = FALSE, $tt_id = FALSE )
 	{
+		global $wpdb;
+
+		$tag_colors = get_option( 'tag-colors' );
+		
 		if ( $_POST['tag-color'] ) :
-			global $wpdb;
-			$tag_colors = get_option( 'tag-colors' );
-			$tag_colors[ $wpdb->insert_id ] = $_POST['tag-color'];
-			update_option( 'tag-colors', $tag_colors);
+
+			$tag_colors[ $term_id ] = $_POST['tag-color'];
+
+		else :
+
+			unset( $tag_colors );
+
 		endif;
+		
+		update_option( 'tag-colors', $tag_colors);
 	}
 
 
@@ -116,11 +125,19 @@ class Tag_Colors
 	 **/
 	public function edit_tag_color()
 	{
+		$tag_colors = get_option( 'tag-colors' );
+		
 		if ( $_POST['tag-color'] && $_POST['tag_ID'] ) :
-			$tag_colors = get_option( 'tag-colors' );
+		
 			$tag_colors[ $_POST['tag_ID'] ] = $_POST['tag-color'];
-			update_option( 'tag-colors', $tag_colors);
+
+		elseif ( '' == $_POST['tag-color'] ) :
+
+			unset( $tag_colors[ $_POST['tag_ID'] ] );
+		
 		endif;
+		
+		update_option( 'tag-colors', $tag_colors);
 	}
 
 
@@ -215,5 +232,3 @@ class Tag_Colors
 }
 
 new Tag_Colors;
-
-Tag_Colors::register_support( 'post_tag' );

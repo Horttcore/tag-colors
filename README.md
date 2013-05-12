@@ -9,7 +9,7 @@ Add a color for your terms
 ## Example
 
 Put this in your functions.php
-`<?php Tag_Colors::register_support( 'post_tag' ) ?>;
+`<?php Tag_Colors::register_support( 'post_tag' ); ?>
 
 ## Changelog
 

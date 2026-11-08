@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<ruleset name="tag-colors">
+	<description>Coding standards for Tag Colors.</description>
+
+	<file>tag-colors.php</file>
+	<file>uninstall.php</file>
+
+	<exclude-pattern>vendor/</exclude-pattern>
+
+	<rule ref="WordPress"/>
+
+	<config name="minimum_supported_wp_version" value="5.8"/>
+	<config name="testVersion" value="7.4-"/>
+</ruleset>

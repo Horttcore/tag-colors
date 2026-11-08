@@ -1,234 +1,211 @@
 <?php
-/*
-Plugin Name: Tag Colors
-Plugin URI: http://horttcore.de
-Description: Color your tags
-Version: 0.2
-Author: Ralf Hortt
-Author URI: http://horttcore.de
-License: GPL2
-*/
+/**
+ * Plugin Name: Tag Colors
+ * Plugin URI: https://horttcore.de
+ * Description: Assign a color to taxonomy terms (stored as term meta).
+ * Version: 1.0.0
+ * Requires at least: 5.8
+ * Requires PHP: 7.4
+ * Author: Ralf Hortt
+ * Author URI: https://horttcore.de
+ * License: GPL-2.0-or-later
+ * Text Domain: tag-colors
+ */
 
-
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 /**
- *
- *  Tag Colors Class
- *
+ * Core plugin: color picker UI and term meta storage.
  */
-class Tag_Colors
-{
+final class Tag_Colors {
 
-
+	public const META_KEY = 'tag_color';
+	public const VERSION  = '1.0.0';
 
 	/**
-	 * Plugin constructor
+	 * Taxonomies that opted in via register_support().
 	 *
-	 * @return void
-	 * @author Ralf Hortt
-	 **/
-	function __construct()
-	{
-		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
-		add_action( 'admin_print_styles-edit-tags.php', array( $this, 'admin_print_styles' ) );
+	 * @var string[]
+	 */
+	private static $taxonomies = array();
 
-		load_plugin_textdomain( 'tag-colors', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/'  );
+	public static function init(): void {
+		add_action( 'plugins_loaded', array( __CLASS__, 'load_textdomain' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'admin_enqueue_scripts' ) );
 	}
 
+	public static function load_textdomain(): void {
+		load_plugin_textdomain(
+			'tag-colors',
+			false,
+			dirname( plugin_basename( __FILE__ ) ) . '/languages/'
+		);
+	}
 
+	public static function admin_enqueue_scripts( string $hook_suffix ): void {
+		if ( ! in_array( $hook_suffix, array( 'edit-tags.php', 'term.php' ), true ) ) {
+			return;
+		}
 
-	/**
-	 * Tag Color input field on add tag screen
-	 *
-	 * @access public
-	 * @return void
-	 * @author Ralf Hortt
-	 **/
-	public function add_form_fields()
-	{
-		wp_enqueue_script( 'tag-colors' );
+		$taxonomy = isset( $_GET['taxonomy'] ) ? sanitize_key( wp_unslash( $_GET['taxonomy'] ) ) : '';
+		if ( ! $taxonomy || ! in_array( $taxonomy, self::$taxonomies, true ) ) {
+			return;
+		}
+
+		wp_enqueue_style( 'wp-color-picker' );
+		wp_enqueue_style(
+			'tag-colors',
+			plugins_url( 'css/tag-colors.css', __FILE__ ),
+			array( 'wp-color-picker' ),
+			self::VERSION
+		);
+		wp_enqueue_script(
+			'tag-colors',
+			plugins_url( 'javascript/tag-colors.js', __FILE__ ),
+			array( 'jquery', 'wp-color-picker' ),
+			self::VERSION,
+			true
+		);
+	}
+
+	public static function add_form_fields(): void {
 		?>
-		<div class="form-field">
-			<label for="tag-color"><?php _e('Color', 'tag-colors'); ?></label>
-			<input name="tag-color" id="tag-color" type="text" value="" />
+		<div class="form-field tag-colors-field">
+			<label for="tag-color"><?php esc_html_e( 'Color', 'tag-colors' ); ?></label>
+			<input name="tag-color" id="tag-color" type="text" value="" autocomplete="off" />
 		</div>
 		<?php
 	}
 
-
-
-	/**
-	 * Register javascripts
-	 *
-	 * @access public
-	 * @return void
-	 * @author Ralf Hortt
-	 **/
-	public function admin_enqueue_scripts()
-	{
-		wp_register_script( 'tag-colors', plugins_url( 'tag-colors/javascript/tag-colors.js' ), array( 'jquery', 'wp-color-picker'), '1.0', TRUE );
-		wp_register_style( 'tag-colors', plugins_url( 'tag-colors/css/tag-colors.css' ), array( 'wp-color-picker') );
-	}
-
-
-
-	/**
-	 * Inject Tag Colors styles
-	 *
-	 * @access public
-	 * @return void
-	 * @author Ralf Hortt
-	 **/
-	public function admin_print_styles()
-	{
-		wp_enqueue_style( 'tag-colors' );
-	}
-
-
-
-	/**
-	 * Save tag colors
-	 *
-	 * @access public
-	 * @param int $term_id Term ID
-	 * @param int $tt_id Taxonomy term ID
-	 * @return void
-	 * @author Ralf Hortt
-	 **/
-	public function created_tag_color( $term_id = FALSE, $tt_id = FALSE )
-	{
-		global $wpdb;
-
-		$tag_colors = get_option( 'tag-colors' );
-		
-		if ( $_POST['tag-color'] ) :
-
-			$tag_colors[ $term_id ] = $_POST['tag-color'];
-
-		else :
-
-			unset( $tag_colors );
-
-		endif;
-		
-		update_option( 'tag-colors', $tag_colors);
-	}
-
-
-
-	/**
-	 * Save tag colors
-	 *
-	 * @access public
-	 * @return void
-	 * @author Ralf Hortt
-	 **/
-	public function edit_tag_color()
-	{
-		$tag_colors = get_option( 'tag-colors' );
-		
-		if ( $_POST['tag-color'] && $_POST['tag_ID'] ) :
-		
-			$tag_colors[ $_POST['tag_ID'] ] = $_POST['tag-color'];
-
-		elseif ( '' == $_POST['tag-color'] ) :
-
-			unset( $tag_colors[ $_POST['tag_ID'] ] );
-		
-		endif;
-		
-		update_option( 'tag-colors', $tag_colors);
-	}
-
-
-
-	/**
-	 * Tag Color input field on edit tag screen
-	 *
-	 * @access public
-	 * @param obj $tag Tag object
-	 * @return void
-	 * @author Ralf Hortt
-	 **/
-	public function edit_form_fields( $tag )
-	{
-		wp_enqueue_script( 'tag-colors' );
-		$tag_colors = get_option( 'tag-colors' );
+	public static function edit_form_fields( WP_Term $tag ): void {
+		$color = tag_colors_get_color( $tag );
 		?>
-		<tr class="form-field">
-			<th scope="row" valign="top">
-				<label for="tag-color"><?php _e('Color', 'tag-colors'); ?></label>
+		<tr class="form-field tag-colors-field">
+			<th scope="row">
+				<label for="tag-color"><?php esc_html_e( 'Color', 'tag-colors' ); ?></label>
 			</th>
 			<td>
-				<input name="tag-color" id="tag-color" type="text" value="<?php if ( $tag_colors ) echo esc_attr( $tag_colors[ $tag->term_id ] ); ?>" size="40" />
+				<input name="tag-color" id="tag-color" type="text" value="<?php echo esc_attr( $color ); ?>" class="regular-text" autocomplete="off" />
 			</td>
 		</tr>
 		<?php
 	}
 
+	public static function save_on_create( int $term_id ): void {
+		if ( ! isset( $_POST['_wpnonce_add-tag'] ) ) {
+			return;
+		}
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce_add-tag'] ) ), 'add-tag' ) ) {
+			return;
+		}
+		self::persist_color( $term_id );
+	}
 
+	public static function save_on_edit( int $term_id ): void {
+		check_admin_referer( 'update-tag_' . $term_id );
+		self::persist_color( $term_id );
+	}
 
+	private static function persist_color( int $term_id ): void {
+		if ( ! current_user_can( 'edit_term', $term_id ) ) {
+			return;
+		}
+		if ( ! isset( $_POST['tag-color'] ) ) {
+			return;
+		}
 
+		$raw   = wp_unslash( $_POST['tag-color'] );
+		$color = sanitize_hex_color( is_string( $raw ) ? $raw : '' );
+
+		if ( $color ) {
+			update_term_meta( $term_id, self::META_KEY, $color );
+		} else {
+			delete_term_meta( $term_id, self::META_KEY );
+		}
+	}
 
 	/**
-	 * Add tag color column to taxonomies
-	 *
-	 * @access public
-	 * @param array $columns Columns
-	 * @return array Columns
-	 * @author Ralf Hortt
-	 **/
-	public function manage_edit_taxonomy_custom_column( $columns )
-	{
-		$columns['color'] = __( 'Color', 'tag-colors' );
+	 * @param array<string, string> $columns
+	 * @return array<string, string>
+	 */
+	public static function add_color_column( array $columns ): array {
+		$columns['tag_colors'] = __( 'Color', 'tag-colors' );
 		return $columns;
 	}
 
+	public static function render_color_column( string $content, string $column_name, int $term_id ): string {
+		if ( 'tag_colors' !== $column_name ) {
+			return $content;
+		}
 
+		$color = tag_colors_get_color( $term_id );
+		if ( ! $color ) {
+			return $content;
+		}
 
-	/**
-	 * Add tag color row to taxonomies
-	 *
-	 * @access public
-	 * @param str $content
-	 * @param str $column_name Column name
-	 * @param int $term_id Term ID
-	 * @return str Content
-	 * @author Ralf Hortt
-	 **/
-	public function manage_taxonomy_custom_column( $content, $column_name, $term_id )
-	{
-		$tag_colors = get_option( 'tag-colors' );
-		switch ( $column_name ) :
-			case 'color':
-				return ( isset( $tag_colors[$term_id] ) ) ? '<span class="tag-color-sample" style="background-color: ' . $tag_colors[$term_id] . '"></span>' : '';
-			break;
-		endswitch;
+		return sprintf(
+			'<span class="tag-color-sample" style="background-color:%s"></span>',
+			esc_attr( $color )
+		);
 	}
 
-
-
 	/**
-	 * Include Tag Color Support
+	 * Enable the color field for a taxonomy.
 	 *
-	 * @static
-	 * @access public
-	 * @param str $taxonomy Taxonomy name
-	 * @return void
-	 * @author Ralf Hortt
-	 **/
-	static public function register_support( $taxonomy )
-	{
-		add_action( $taxonomy . '_add_form_fields', array( 'Tag_Colors', 'add_form_fields' ) );
-		add_action( $taxonomy . '_edit_form_fields', array( 'Tag_Colors', 'edit_form_fields' ) );
-		add_action( 'edited_' . $taxonomy, array( 'Tag_Colors' , 'edit_tag_color' ) );
-		add_action( 'created_' . $taxonomy, array( 'Tag_Colors' , 'created_tag_color' ) );
-		add_filter( 'manage_edit-' . $taxonomy . '_columns', array( 'Tag_Colors', 'manage_edit_taxonomy_custom_column' ) );
-		add_filter( 'manage_' . $taxonomy . '_custom_column', array( 'Tag_Colors', 'manage_taxonomy_custom_column' ), 10, 3 );
+	 * Call from your theme or plugin on init, e.g. Tag_Colors::register_support( 'post_tag' );
+	 */
+	public static function register_support( string $taxonomy ): void {
+		if ( in_array( $taxonomy, self::$taxonomies, true ) ) {
+			return;
+		}
+
+		if ( ! taxonomy_exists( $taxonomy ) ) {
+			return;
+		}
+
+		self::$taxonomies[] = $taxonomy;
+
+		$auth = static function ( bool $allowed, string $meta_key, int $object_id ): bool {
+			unset( $allowed, $meta_key );
+			return current_user_can( 'edit_term', $object_id );
+		};
+
+		register_term_meta(
+			$taxonomy,
+			self::META_KEY,
+			array(
+				'type'              => 'string',
+				'single'            => true,
+				'show_in_rest'      => true,
+				'sanitize_callback' => 'sanitize_hex_color',
+				'auth_callback'     => $auth,
+			)
+		);
+
+		add_action( $taxonomy . '_add_form_fields', array( __CLASS__, 'add_form_fields' ) );
+		add_action( $taxonomy . '_edit_form_fields', array( __CLASS__, 'edit_form_fields' ) );
+		add_action( 'created_' . $taxonomy, array( __CLASS__, 'save_on_create' ) );
+		add_action( 'edited_' . $taxonomy, array( __CLASS__, 'save_on_edit' ) );
+		add_filter( 'manage_edit-' . $taxonomy . '_columns', array( __CLASS__, 'add_color_column' ) );
+		add_filter( 'manage_' . $taxonomy . '_custom_column', array( __CLASS__, 'render_color_column' ), 10, 3 );
 	}
-
-
-
 }
 
-new Tag_Colors;
+Tag_Colors::init();
+
+/**
+ * Get the stored hex color for a term.
+ *
+ * @param int|WP_Term $term Term ID or object.
+ */
+function tag_colors_get_color( $term ): string {
+	$term_id = $term instanceof WP_Term ? $term->term_id : (int) $term;
+	if ( $term_id <= 0 ) {
+		return '';
+	}
+
+	$value = get_term_meta( $term_id, Tag_Colors::META_KEY, true );
+	return is_string( $value ) && sanitize_hex_color( $value ) ? $value : '';
+}

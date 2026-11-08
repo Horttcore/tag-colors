@@ -1,28 +1,72 @@
 # Tag Colors
 
-Add a color for your terms
+Assign a hex color to taxonomy terms via the admin UI. Values are stored as **term meta** (`tag_color`), including REST API support.
 
-## Usage
+## Requirements
 
-`Tag_Colors::register_support( $taxonomy )´
+- WordPress 5.8+
+- PHP 7.4+
 
-## Example
+## Composer
 
-Put this in your functions.php
-`<?php Tag_Colors::register_support( 'post_tag' ); ?>
+Install into a WordPress project (requires [composer/installers](https://github.com/composer/installers) in the root `composer.json`):
+
+```json
+{
+	"repositories": [
+		{
+			"type": "vcs",
+			"url": "https://github.com/Horttcore/tag-colors"
+		}
+	],
+	"require": {
+		"horttcore/tag-colors": "^1.0"
+	},
+	"extra": {
+		"installer-paths": {
+			"wp-content/plugins/{$name}/": ["type:wordpress-plugin"]
+		}
+	}
+}
+```
+
+Development dependencies (PHPCS + WordPress coding standards):
+
+```bash
+composer install
+composer phpcs
+```
+
+## Setup
+
+Activate the plugin, then register each taxonomy on `init`:
+
+```php
+add_action( 'init', function () {
+	Tag_Colors::register_support( 'post_tag' );
+} );
+```
+
+## Reading colors
+
+```php
+$hex = tag_colors_get_color( $term );
+// or
+$hex = tag_colors_get_color( $term_id );
+```
 
 ## Changelog
 
-### v0.2
+### 1.0.0
 
-* Bugfix: To remove a color from a tag just leave the color field empty
+- Term meta storage, REST registration, security hardening
+- `tag_colors_get_color()` helper
 
-### v0.1
+### 0.2
 
-* Initial release
+- Clear the color field to remove a color
+- No default `post_tag` registration (opt-in only)
 
-## Upgrade notice
+### 0.1
 
-### v0.2
-
-* Default registration for `post_tag´ removed
+- Initial release

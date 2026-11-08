@@ -1,5 +1,5 @@
-jQuery(document).ready(function(){
-	jQuery('#tag-color').wpColorPicker({
-		palettes: false
-	});
-});
+( function ( $ ) {
+	$( function () {
+		$( '#tag-color' ).wpColorPicker( { palettes: false } );
+	} );
+}( jQuery ) );
